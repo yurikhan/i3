@@ -52,6 +52,20 @@ struct focus_mapping {
 static TAILQ_HEAD(focus_mappings_head, focus_mapping) focus_mappings =
     TAILQ_HEAD_INITIALIZER(focus_mappings);
 
+static void apply_pending_marks(void) {
+    if (num_marks > 0) {
+        for (int i = 0; i < num_marks; i++) {
+            Con *con = marks[i].con_to_be_marked;
+            char *mark = marks[i].mark;
+            con_mark(con, mark, MM_ADD);
+            free(mark);
+        }
+
+        FREE(marks);
+        num_marks = 0;
+    }
+}
+
 static int json_start_map(void *ctx) {
     LOG("start of map, last_key = %s\n", last_key);
     if (parsing_swallows) {
@@ -164,17 +178,7 @@ static int json_end_map(void *ctx) {
             floating_check_size(json_node, false);
         }
 
-        if (num_marks > 0) {
-            for (int i = 0; i < num_marks; i++) {
-                Con *con = marks[i].con_to_be_marked;
-                char *mark = marks[i].mark;
-                con_mark(con, mark, MM_ADD);
-                free(mark);
-            }
-
-            FREE(marks);
-            num_marks = 0;
-        }
+        apply_pending_marks();
 
         LOG("attaching\n");
         con_attach(json_node, json_node->parent, true);
